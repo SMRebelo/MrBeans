@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bar Order App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    #popup, #order-modal {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+
+    #drink-options {
+      display:  flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .category-container {
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin: 10px;
+      padding: 10px; 
+
+      width: auto;
+    }
+
+    .category-container strong {
+      color: #333333;
+      display: block;
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      text-align: center;
+      font-size: 1.8em;
+    } 
+
+    .drink-button {
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1.2em;
+      margin: 5px;
+      padding: 15px;
+      width: 100%;
+    }
+
+    .cash-button {
+      background-color: #4CAF50; /* Green for Cash */
+    }
+
+    .card-button {
+        background-color: #f44336; /* Red for Card */
+    }
+
+    #order-history {
+      display: flex;
+      justify-content: space-evenly;
+    }
+
+    .order-column {
+      width: 48%;
+    }
+
+    .order-column ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .order-column li {
+      font-size: 1.1em;
+      margin: 10px 0;
+    }
+
+    #showOrderButton, #clearOrderButton, #closeOrderModal {
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1.2em;
+      margin: 10px;
+      padding: 15px;
+    }
+
+    #clearOrderButton {
+      background-color: #f44336; /* Red */
+    }
+
+    #showOrderButton:hover, #clearOrderButton:hover, #closeOrderModal:hover {
+      background-color: #45a049;
+    }
+
+    #closeOrderModal {
+      background-color: #333; /* Dark Grey */
+    }
+
+    #closeOrderModal:hover {
+      background-color: #555;
+    }
+  
+    #drink-options button {
+      display: inline-block;
+      padding: 10px 20px;
+      font-size: 16px;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      border: 2px solid #3498db;
+      border-radius: 5px;
+      color: #3498db;
+      background-color: white;
+      transition: background-color 0.3s, color 0.3s;
+      width: 12em; 
+      height: 3em;
+      margin: 3px;
+    }
+
+    /* Hover effect */
+    #drink-options button:hover {
+      background-color: #3498db;
+      color: white;
+    }
+    
+  </style>
+</head>
+<body>
+  <div id="drink-options"></div>
+  <div id="popup">
+    <p style="font-size: 1.5em; margin-bottom: 15px; text-align: center;">Pagamento<br></p>
+    <button id="cashButton" class="drink-button cash-button">Cash</button>
+    <button id="cardButton" class="drink-button card-button">Card</button>
+  </div>  
+  <div id="order-history">
+    <div class="order-column">
+      <h2>Cash Payments:</h2>
+      <ul id="order-list-cash"></ul>
+    </div>
+    <div class="order-column">
+      <h2>Card Payments:</h2>
+      <ul id="order-list-card"></ul>
+    </div>
+  </div>
+  <div id="order-modal">
+    <h2>Your Order Details:</h2>
+    <ul id="order-details-list"></ul>
+    <button id="closeOrderModal" class="drink-button">Close</button>
+  </div>
+  <button id="showOrderButton" class="drink-button">Show Order</button>     
+  <button id="clearOrderButton" class="drink-button">Clear Order</button>
+
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script type="text/javascript">
+    var orderHistoryCash = [];
+    var orderHistoryCard = [];
+    var totalSumCash = 0;
+    var totalSumCard = 0;
+
+    function getSelectedDrinks() {
+      var selectedDrinksJSON = localStorage.getItem("selectedDrinks");
+      return selectedDrinksJSON ? JSON.parse(selectedDrinksJSON) : [];
+    }
+
+    function saveSelectedDrinks(selectedDrink) {
+      var selectedDrinks = getSelectedDrinks();
+      selectedDrinks.push(selectedDrink);
+      localStorage.setItem("selectedDrinks", JSON.stringify(selectedDrinks));
+    }
+
+    var categories = {
+      "Cocktails": [
+        "Porto Tônico $6",
+        "Porto Beans $6",
+        "Porto Sangria $7",
+        "Gin Tônico $7",
+        "Cuba Libre $6.5",
+        "Moskow Mule $8",
+        "Long Island $9",
+        "Beirão Sour $7",
+        "Expresso Martini $8",
+        "Mr Beans Virgin $4",
+      ],
+      "Vinhos": [
+        "Vinho Branco $3",
+        "Vinho Branco R $5",
+        "Vinho Tinto $3",
+        "Vinho Tinto R $5",
+      ],
+      "Cafetaria": [
+        "Água $1",
+        "Água Pedras $2",
+        "Água Tônica $2",
+        "Ginger Ale $2",
+        "Coca Cola $2",
+        "Ginger Beer $3",
+        "Café $1",
+        "Ice Coffe $2",
+        "Limonada $3",       
+      ],
+      "Cervejas": [
+        "Beer 20cl $2",
+        "Beer 30cl $3",
+        "Beer 40cl $4",
+        "Super Bock $2.5",
+      ],
+    };
+
+    $("#drink-options").html();
+    $("#order-modal").hide();
+    for (var category in categories) {
+      var categoryContainer = $("<div>");
+      categoryContainer.addClass("category-container");
+      categoryContainer.append("<strong>" + category + "</strong><br>"); 
+
+      for (var i = 0; i < categories[category].length; i++) {
+        var button = $("<button>");
+        button.text(categories[category][i]);
+        (function(selectedDrink) {
+          button.click(function() {
+            $("#popup").show();
+            saveSelectedDrinks(selectedDrink);
+          });
+        })(categories[category][i]);
+
+        categoryContainer.append(button);
+        categoryContainer.append("<br>");
+      }
+
+      $("#drink-options").append(categoryContainer);
+    }
+
+    $("#popup").hide();
+
+    $("#cashButton").click(function() {
+      var selectedDrinks = getSelectedDrinks();
+      var selectedDrink = {
+        drink: selectedDrinks[selectedDrinks.length - 1],
+        paymentMethod: "Cash"
+      };
+      saveSelectedDrinks(selectedDrink);
+      orderHistoryCash.push(selectedDrink);
+      $("#order-list-cash").append("<li>" + selectedDrink.drink + " - Payment: " + selectedDrink.paymentMethod + "</li>");
+      totalSumCash += calculateDrinkPrice(selectedDrink.drink);
+      $("#popup").hide();
+    });
+
+    $("#cardButton").click(function() {
+      var selectedDrinks = getSelectedDrinks();
+      var selectedDrink = {
+        drink: selectedDrinks[selectedDrinks.length - 1],
+        paymentMethod: "Card"
+      };
+      saveSelectedDrinks(selectedDrink);
+      orderHistoryCard.push(selectedDrink);
+      $("#order-list-card").append("<li>" + selectedDrink.drink + " - Payment: " + selectedDrink.paymentMethod + "</li>");
+      totalSumCard += calculateDrinkPrice(selectedDrink.drink);
+      $("#popup").hide();
+    });
+
+    function calculateDrinkPrice(drink) {
+      var priceMatch = drink.match(/\$([\d.]+)/);
+      return priceMatch ? parseFloat(priceMatch[1]) : 0;
+    }
+
+    $("#showOrderButton").click(function() {
+      $("#order-modal").show();
+      $("#order-details-list").empty();
+      totalSumCash = 0;
+      totalSumCard = 0;
+    
+      // Display Cash Orders
+      if (orderHistoryCash.length > 0) {
+        $("#order-details-list").append("<h3>Cash Orders</h3>");
+        orderHistoryCash.forEach(function(orderDetails) {
+          $("#order-details-list").append("<li>" + orderDetails.drink + " - Payment: " + orderDetails.paymentMethod + "</li>");
+          totalSumCash += calculateDrinkPrice(orderDetails.drink);
+        });
+        $("#order-details-list").append("<li class='total'>Total Cash Payment: $" + totalSumCash.toFixed(2) + "</li>");
+      }
+    
+      // Display Card Orders
+      if (orderHistoryCard.length > 0) {
+        $("#order-details-list").append("<h3>Card Orders</h3>");
+        orderHistoryCard.forEach(function(orderDetails) {
+          $("#order-details-list").append("<li>" + orderDetails.drink + " - Payment: " + orderDetails.paymentMethod + "</li>");
+          totalSumCard += calculateDrinkPrice(orderDetails.drink);
+        });
+        $("#order-details-list").append("<li class='total'>Total Card Payment: $" + totalSumCard.toFixed(2) + "</li>");
+      }
+    
+      // Highlight Total Sums
+      $("#order-details-list .total").css("font-weight", "bold");
+    });
+
+      $("#order-details-list").append("<li>Total Sum Cash: $" + totalSumCash.toFixed(2) + "</li>");
+      $("#order-details-list").append("<li>Total Sum Card: $" + totalSumCard.toFixed(2) + "</li>");
+
+
+    $("#clearOrderButton").click(function() {
+      $("#order-list-cash").empty();
+      $("#order-list-card").empty();
+      localStorage.removeItem("selectedDrinks");
+      orderHistoryCash = [];
+      orderHistoryCard = [];
+    });
+
+    $("#closeOrderModal").click(function() {
+      $("#order-modal").hide();
+    });
+
+    var storedDrinks = getSelectedDrinks();
+    if (storedDrinks.length > 0) {
+      storedDrinks = storedDrinks.filter(function(item) {
+        return item.drink && item.paymentMethod;
+      });
+
+      for (var i = 0; i < storedDrinks.length; i++) {
+        var selectedDrink = storedDrinks[i];
+        if (selectedDrink.paymentMethod === "Cash") {
+          orderHistoryCash.push(selectedDrink);
+          totalSumCash += calculateDrinkPrice(selectedDrink.drink);
+          $("#order-list-cash").append("<li>" + selectedDrink.drink + " - Payment: " + selectedDrink.paymentMethod + "</li>");
+        } else if (selectedDrink.paymentMethod === "Card") {
+          orderHistoryCard.push(selectedDrink);
+          totalSumCard += calculateDrinkPrice(selectedDrink.drink);
+          $("#order-list-card").append("<li>" + selectedDrink.drink + " - Pa.yment: " + selectedDrink.paymentMethod + "</li>");
+        }
+      }
+    }
+  </script>
+</body>
+</html>
